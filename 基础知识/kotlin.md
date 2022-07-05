@@ -299,7 +299,7 @@
 
 ## 三. 标准库函数、集合
 
- 1. apply
+ 1. apply (DSL-领域特定语言，暴露接收者的函数和特性，以便使用定义的lambda表达式读取和配置它)
 
     ```
     val file1  = File("E://1.txt")
@@ -800,9 +800,78 @@
 
    
 
-4. 使用reified对泛型参数类型进行检查
+4. **使用reified修饰使得可用对泛型参数类型进行检查**
 
    kotlin和java一样具有泛型擦除特质（T的类型在运行时不可知）
 
-5. 
+   ```
+   class MB<T: Human>(){
+   	//随机产生一个对象，不是指定类型对象时调用backup对象
+   	inline fun <reified T> randomOrBackup(backup: () -> T): T{
+   		val items: List<Boy> = listOf(Boy("jack",10), Man("jerry",30))
+   		val random: Human = items.shuffled().first()
+   		return if(random is T){
+   			//此处由于擦除特质默认不能使用if(random is T), 在Java中使用random.javaClass.name反射解决。而kotlin这里使用reified和inline都是为了可用is T，其实逻辑就是把泛型替换掉了，从而保留了具体类型（inline的必要性），减少了使用反射的运行时成本
+   			random
+   		}else{
+   			//不是T的情况，比如T=Boy时shuffled到Man
+   			backup()
+   		}
+   	}
+   }
+   fun main(){
+   	val box1: MB<Man> = MB()
+   	val it1 = box1.randomOrBackup{
+   		Man("jim", 20)
+   	}
+   	//it1的内容可能是jerry或者jim
+   }
+   ```
 
+   
+
+5. 类拓展[极其灵活的框架定义]
+
+   ```
+   //类.函数名, 用this代替类对象，用于难以修改类定义的情况
+   fun String.addExt(amount: Int = 1) = this  + "!".repeat(amount)
+   //可空类型拓展一般需要提供默认值。函数添加infix前缀可用省略点和括号调用，典型的比如map的xx to xx。这里不写了
+   fun String?.addExt(amount: Int = 1, default: String = "") 
+   	= (this ?: default) + "!".repeat(amount)
+   fun Any.easyPrint() = println(this)
+   
+   //泛型拓展函数 可以定义针对泛型的拓展函数
+   fun <R> R.standardPrint(): R{
+   	println(this)
+   	return this
+   }
+   //尤其注意泛型拓展函数
+   //阅读let apply等的函数定义, 理解泛型拓展函数和前面提及的标准函数的实现
+   public inline fun<T,R> T.let(block: (T)->R):R{...}
+   （let可用在任意类型调用，返回lambda的执行结果，lambda中用it代替，run/apply等...这些规则的原因。）
+   
+   //拓展属性，不大常用
+   val String.numVowels
+   	get() = count{"aeiou".contains(it)} //String的count接受一个lambda，接受每个字符（it），统计lambda返回true的个数
+   
+   fun main(){
+   	"".addExt(3)
+   	"u15da".numVowels.easyPrint()
+   	"abc".standardPrint().addExt(2).easyPrint()
+   }
+   ```
+
+   
+
+
+##  七. 函数式编程
+
+ 1. map
+
+    ```
+    
+    ```
+
+    
+
+ 2. 
