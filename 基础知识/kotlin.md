@@ -864,14 +864,230 @@
    
 
 
-##  七. 函数式编程
+##  七. 函数式编程（高阶函数链式调用）
 
  1. map
 
+    ***<font color="red">不可变数据的副本在链上的数据间传递</font>***
+
     ```
-    
+    //map遍历每个元素，返回包含已修改元素的集合，变量名自定义
+    //常用于集合修改或者获取属性
+    val alpbets = listOf("a","b","c")
+    alpbets.map{alpbet -> alpbet.toUpperCase()}.map{uperalp -> " $uperalp "}
     ```
 
     
 
- 2. 
+ 2. flatMap
+
+    ```
+    //操作集合的集合，将多个集合的元素合并后返回包含所有元素的单一集合
+    //用于集合展开、修改和属性获取
+    val res = listOf(
+    	listOf(1,2,3),
+    	listOf(4,5,6)).flatMap{ it + 1 }
+    ```
+
+    
+
+ 3. filter
+
+    ```
+    //接受predicate函数，为true时添加受检元素，为false时移除受检元素
+    //用于集合移除元素
+    val res = listOf("jack", "jim", "tom").filter{
+    	it.contains("j")
+    }
+    
+    //拿出所有红色水果
+    val item = listOf(
+    	listOf("red apple","green apple","blue apple")
+    	listOf("red pear","green pear")
+    	listOf("yellow banana","grown banana")
+    }
+    val res2 = 
+    	item.flatMap{it.filter{it.contains("red")||it.contains("green")}}
+    	
+    //找素数
+    val primesInGivenNums = 
+    	numbers.filter{
+    		//条件是2-number集合中的元素被number取模，没有一个结果为0
+    		(2 until number)
+    			.map {number % it}
+    			//none函数考察集合中的每个元素，仅在集合中所有元素不满足条件时返回true
+    			//当然也可以在map里面用if 为0就返回false
+    			.none{it == 0}
+    	}
+    ```
+
+    
+
+ 4. zip
+
+    ```
+    val set1 = listOf(1,2,3)
+    val set2 = listOf(4,5,6)
+    //和filterMap不同的是他返回一个键值对集合，即1 to 4, 2 to 5, 3 to 6
+    set1.zip(set2)
+    ```
+
+    
+
+ 5. folder
+
+    接受一个初始累加器值，根据匿名函数的结果更新集合中的每个值。***相当于递归的map, 最后返回结果值***
+
+    ```
+    val res = listOf(1,2,3,4).fold(0){
+    	accumulator, number ->
+    		println("val is now $accumulate")
+    		accumulator + (number * 3)
+    }
+    //res是3+2*3+3*3+4*3，它是一个Int类型
+    ```
+
+    
+
+## 八 序列、互操作和注解
+
+ 1. 内置惰性集合类型称序列，不会索引内容或记录元素数目（可能无限多，因为数据源可能不停产生元素）
+
+    ```
+    //产生头1k个素数
+    //普通方式 产生许多非必要判断，上界也可能难以判断准确
+    val resList = (1..1000000).toList().filter{
+    	(2 until number)
+    		.map{number % it}
+    		.none{it == 0}
+    }.take(1000)
+    
+    //序列方式 使用generateSequence传入seed, 定义从种子开始的生成规则, 对每个元素仅在使用时判断（好像用个while循环加上MutableList也行，了解吧）
+    val resList = generateSequence(2){
+    	value -> value + 1
+    }.filter{
+    	...同上。
+    }.take(1000) //这个filter和take显然和上一个不同, 参源码，他是返回序列的，惰性的。
+    ```
+
+    
+
+ 2. 同java的互操作和可空性
+
+    ```
+    ---Jhava.java
+    public class Jhava{
+    	public String attri = "myJhava"
+    	@NotNull
+    	public String greet(){
+    		return "hello"
+    	}
+    	@Nullable
+    	public String detemineLevel(){
+    		return null
+    	}
+    }
+    ---Hero.kt
+    @file:JvmName("Hero") //见3
+    class SpellBook{
+    	companion object{
+    		@JvmField
+    		val MAX_SPELL_COUNT = 19
+    		@JvmStaic
+    		fun so(){...}
+    	}
+    
+    	@JvmField
+    	val spells = listOf("Magic Ms. L")
+    }
+    @JvmOverloads
+    fun judge(lh:String = "berry", rh:String = "pang"){
+    	println("$lh rh")
+    }
+    fun main(){
+    	val adversary = Jhava()
+    	adversary.greet()
+    	//互操作的属性不需要调用get set
+    	adversary.attri = "myjhava"
+    	//使用单感叹号表示平台类型, 表示（基于平台的）可能为空
+     	val level:String! = adversary.detemineLevel()
+     	//调用方式同安全调用
+     	level?.toLowerCase()
+    }
+    ```
+
+    
+
+ 3. 在java中调用kotlin
+
+    ```
+    public static void main(){
+    	//全局函数直接调用文件名.函数 HeroKt.main()
+    	//或者使用文件开头的JvmName注解
+    	Hero.main();
+    	
+    	//在java中访问kotlin属性，属性需要有@JvmField注解
+    	SpellBook sb = new SpellBook();\
+    	
+    	//get set市kotlin自己生成的，java调用的时候还是要显式写出来
+    	sb.getSpells();
+    	
+    	//加了JvmField注解的属性才可以不用调用get set
+    	sb.spells = listOf(" ");
+    	
+    	//java里面调kotlin函数如果有默认参数，kotlin函数需要加@JvmOverloads注解
+    	Hero.judge("perry")
+    	
+    	//调用伴生对象SpellBook.Companion.getMAX_SPELL_COUNT();
+    	//伴生对象加入@JvmField注解时可用直接当作静态属性调用，加入@JvmStaic可当作静态函数调用
+    	SpellBook.MAX_SPELL_COUNT;
+    	SpellBook.sp();
+    }
+    ```
+
+    
+
+ 4. Java和Kotlin异常检查的差异
+
+    ```
+    public void myExpFun throws IOException{
+    	throw new IOException();
+    }
+    public void main(){
+    	//java捕捉kt异常必须加throws注解
+    	try{
+    		KtExpFu()
+    	}catch(IOException e){
+    		...
+    	}
+    	
+    }
+    ---
+    //kt捕捉java不需要搞。且kotlin和java不同，不会强迫处理该异常（try catch）
+    myExpFun()
+    @Throws(IOException::class)
+    fun ktExpFu(){
+    	throw IOException()
+    }
+    ```
+
+    
+
+ 5. 函数类型互操作
+
+    ```
+    val translator = {
+    	utterance: String ->
+    		println(utterance.toLowerCase())
+    }
+    
+    ---
+    java中匿名函数的调用方式（FunctionN中的N代表实参的数目[0-22]）：
+    Function1<String, Unit> translator = Hero.getTranslator()
+    translator.invoke("truTh")
+    ```
+
+    
+
+    
+
